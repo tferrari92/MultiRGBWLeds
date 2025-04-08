@@ -10,8 +10,10 @@ An Arduino library to control up to four RGBW LED modules independently, with bu
 
 ## Installation
 
-1. Clone/download this repo into your Arduino `libraries/` folder.
-2. Restart the Arduino IDE.
+1. Download the library from GitHub repository
+2. Open Arduino IDE
+3. Go to Sketch > Include Library > Add .ZIP Library...
+4. Search for the downloaded file
 
 ## Basic Usage
 
