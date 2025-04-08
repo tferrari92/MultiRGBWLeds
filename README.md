@@ -10,7 +10,7 @@ An Arduino library to control up to four RGBW LED modules independently, with bu
 
 ## Installation
 
-1. Download the library from the [GitHub Releases Page](https://github.com/tferrari92/MultiRGBWLeds/releases)
+1. [Download the library](https://github.com/tferrari92/MultiRGBWLeds/archive/refs/tags/v1.0.0.zip)
 2. Open Arduino IDE
 3. Go to Sketch > Include Library > Add .ZIP Library...
 4. Select the `.zip` you just downloaded
