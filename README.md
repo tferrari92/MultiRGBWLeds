@@ -20,12 +20,11 @@ An Arduino library to control up to four RGBW LED modules independently, with bu
 ```cpp
 #include <MultiRGBWLeds.h>
 
-int backLeft[] = {3, 5, 6, 9};     // R, G, B, W PWM pins
-int frontLeft[] = {10, 11, 12, 13};
-int frontRight[] = {A0, A1, A2, A3};
-int backRight[] = {A4, A5, 2, 4};
-
 void setup() {
+    int backLeft[4] = {12, 13, 14, 15}; // {R, G, B, W}
+    int frontLeft[4] = {8, 9, 10, 11};  // {R, G, B, W}
+    int frontRight[4] = {4, 5, 6, 7};   // {R, G, B, W}
+    int backRight[4] = {0, 1, 2, 3};    // {R, G, B, W}
     MultiRGBWLeds::begin(backLeft, frontLeft, frontRight, backRight);
     MultiRGBWLeds::set(FRONT_LEFT, RED, 255);
 }
