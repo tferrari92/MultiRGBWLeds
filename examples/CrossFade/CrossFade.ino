@@ -11,12 +11,14 @@ MultiRGBWLeds leds;
 
 void setup()
 {
-    leds.begin(backLeft, frontLeft, frontRight, backRight);
+    // This example uses Linear mode: nominal RGB colors, brightness 0-255.
+    // (Omit the ColorMode argument for Calibrated mode + 0-10 brightness.)
+    leds.begin(backLeft, frontLeft, frontRight, backRight, ColorMode::Linear);
 }
 
 void loop()
 {
-    // Fade all four lamps from red up to full, then down to off, over 2s each.
+    // Fade all four lamps from off up to full red over 2s...
     leds.crossFade(
         LampPosition::BackLeft, LampColor::Red, 0, LampColor::Red, 255,
         LampPosition::FrontLeft, LampColor::Red, 0, LampColor::Red, 255,
@@ -24,6 +26,7 @@ void loop()
         LampPosition::BackRight, LampColor::Red, 0, LampColor::Red, 255,
         2000);
 
+    // ...then fade red down to off over 2s.
     leds.crossFade(
         LampPosition::BackLeft, LampColor::Red, 255, LampColor::Blue, 0,
         LampPosition::FrontLeft, LampColor::Red, 255, LampColor::Blue, 0,

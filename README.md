@@ -48,22 +48,33 @@ MultiRGBWLeds leds;
 
 void setup() {
     // Creates and configures its own PCA9685 at 0x40.
+    // Default color mode is Calibrated -> brightness is 0-10.
     leds.begin(backLeft, frontLeft, frontRight, backRight);
 
-    // Brightness is 0-255.
-    leds.set(LampPosition::FrontLeft, LampColor::Red, 255);
+    leds.set(LampPosition::FrontLeft, LampColor::Red, 10); // full
 }
 
 void loop() {
     // Blink the front-left lamp blue: 200ms on, 300ms off.
-    leds.flash(LampPosition::FrontLeft, LampColor::Blue, 255, 200, 300);
+    leds.flash(LampPosition::FrontLeft, LampColor::Blue, 10, 200, 300);
 }
 ```
 
-### Brightness
+### Color modes & brightness
 
-Brightness is **0–255** everywhere (0 = off, 255 = full), matching `analogWrite()`
-and Adafruit NeoPixel.
+The color model and brightness range are chosen in `begin()` via `ColorMode`:
+
+| Mode | Colors | Brightness | Use when |
+|------|--------|-----------|----------|
+| `Calibrated` *(default)* | Hues empirically tuned so they read **true on real RGBW lamps** (channels aren't equally bright) | **0–10** | You want good-looking colors out of the box |
+| `Linear` | **Nominal RGB** values, scaled linearly | **0–255** (the `analogWrite()`/NeoPixel convention) | You want predictable RGB and will tune per-rig |
+
+```cpp
+leds.begin(backLeft, frontLeft, frontRight, backRight);                       // Calibrated, 0-10 (default)
+leds.begin(backLeft, frontLeft, frontRight, backRight, ColorMode::Linear);    // Linear, 0-255
+```
+
+Brightness 0 is off; full is `10` (Calibrated) or `255` (Linear).
 
 ### Colors
 
@@ -77,7 +88,8 @@ and Adafruit NeoPixel.
 ### Custom I²C address / frequency
 
 ```cpp
-leds.begin(backLeft, frontLeft, frontRight, backRight, 0x41, 1600.0);
+// begin(channels..., mode, i2cAddress, pwmFrequencyHz)
+leds.begin(backLeft, frontLeft, frontRight, backRight, ColorMode::Calibrated, 0x41, 1600.0);
 ```
 
 ### Bringing your own driver

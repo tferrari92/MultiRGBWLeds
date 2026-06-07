@@ -3,11 +3,11 @@
 // Relative R/G/B/W mix for each LampColor (0-255 per channel). Order MUST match
 // the LampColor enum. Stored in flash (PROGMEM) to save RAM. Brightness is
 // applied on top of these mixes at call time.
-//
-// These mixes are empirically calibrated so the colors read true on real RGBW
-// lamps (the channels' apparent intensities are not equal), not derived from
-// nominal RGB. At full brightness (255) they reproduce the tuned hues exactly.
-const MultiRGBWLeds::Rgbw MultiRGBWLeds::kColorTable[14] PROGMEM = {
+
+// Calibrated: empirically tuned so colors read true on real RGBW lamps (the
+// channels' apparent intensities are not equal), not derived from nominal RGB.
+// At full brightness (10) they reproduce the original hand-tuned output exactly.
+const MultiRGBWLeds::Rgbw MultiRGBWLeds::kColorTableCalibrated[14] PROGMEM = {
     {0, 0, 0, 0},     // Off
     {255, 0, 0, 0},   // Red
     {204, 25, 0, 0},  // Orange
@@ -21,6 +21,25 @@ const MultiRGBWLeds::Rgbw MultiRGBWLeds::kColorTable[14] PROGMEM = {
     {51, 0, 178, 0},  // Indigo
     {102, 0, 127, 0}, // Magenta
     {204, 0, 25, 0},  // Pink
+    {0, 0, 0, 255},   // White
+};
+
+// Linear: nominal RGB color values, scaled linearly. Predictable on any rig,
+// but may not look "true" on RGBW lamps without per-rig tuning.
+const MultiRGBWLeds::Rgbw MultiRGBWLeds::kColorTableLinear[14] PROGMEM = {
+    {0, 0, 0, 0},     // Off
+    {255, 0, 0, 0},   // Red
+    {255, 128, 0, 0}, // Orange
+    {255, 255, 0, 0}, // Yellow
+    {191, 255, 0, 0}, // Lime
+    {0, 255, 0, 0},   // Green
+    {0, 255, 255, 0}, // Cyan
+    {0, 255, 191, 0}, // Aqua
+    {0, 191, 255, 0}, // Sky
+    {0, 0, 255, 0},   // Blue
+    {75, 0, 130, 0},  // Indigo
+    {255, 0, 255, 0}, // Magenta
+    {255, 96, 160, 0},// Pink
     {0, 0, 0, 255},   // White
 };
 
@@ -39,15 +58,31 @@ void MultiRGBWLeds::storeChannels(
     }
 }
 
+void MultiRGBWLeds::applyMode(ColorMode mode)
+{
+    if (mode == ColorMode::Linear)
+    {
+        _colorTable = kColorTableLinear;
+        _brightnessMax = kLinearBrightnessMax;
+    }
+    else
+    {
+        _colorTable = kColorTableCalibrated;
+        _brightnessMax = kCalibratedBrightnessMax;
+    }
+}
+
 void MultiRGBWLeds::begin(
     const uint8_t backLeft[kChannelsPerLamp],
     const uint8_t frontLeft[kChannelsPerLamp],
     const uint8_t frontRight[kChannelsPerLamp],
     const uint8_t backRight[kChannelsPerLamp],
+    ColorMode mode,
     uint8_t i2cAddress,
     float pwmFrequencyHz)
 {
     storeChannels(backLeft, frontLeft, frontRight, backRight);
+    applyMode(mode);
 
     _ownedDriver = Adafruit_PWMServoDriver(i2cAddress, Wire);
     _driver = &_ownedDriver;
@@ -62,9 +97,11 @@ void MultiRGBWLeds::begin(
     const uint8_t frontLeft[kChannelsPerLamp],
     const uint8_t frontRight[kChannelsPerLamp],
     const uint8_t backRight[kChannelsPerLamp],
-    Adafruit_PWMServoDriver &externalDriver)
+    Adafruit_PWMServoDriver &externalDriver,
+    ColorMode mode)
 {
     storeChannels(backLeft, frontLeft, frontRight, backRight);
+    applyMode(mode);
     _driver = &externalDriver;
 }
 
@@ -85,17 +122,17 @@ const uint8_t *MultiRGBWLeds::channelsFor(LampPosition position) const
     }
 }
 
-MultiRGBWLeds::Rgbw MultiRGBWLeds::colorFor(LampColor color)
+MultiRGBWLeds::Rgbw MultiRGBWLeds::colorFor(LampColor color) const
 {
     Rgbw mix;
-    memcpy_P(&mix, &kColorTable[static_cast<uint8_t>(color)], sizeof(Rgbw));
+    memcpy_P(&mix, &_colorTable[static_cast<uint8_t>(color)], sizeof(Rgbw));
     return mix;
 }
 
 uint16_t MultiRGBWLeds::channelPwm(uint8_t mix, uint8_t brightness) const
 {
-    // mix (0-255) * brightness (0-255) scaled into the 12-bit PWM range.
-    uint32_t pwm = (uint32_t)mix * brightness * kPwmMax / (255UL * 255UL);
+    // mix (0-255) * brightness (0.._brightnessMax) scaled into the 12-bit PWM range.
+    uint32_t pwm = (uint32_t)mix * brightness * kPwmMax / (255UL * _brightnessMax);
     if (pwm > kPwmMax)
         pwm = kPwmMax;
     return (uint16_t)pwm;
@@ -353,12 +390,12 @@ void MultiRGBWLeds::sideToSide(Axis axis, LampColor color1, LampColor color2,
 
     for (uint16_t i = 0; i < cycles; i++)
     {
-        set(groupA[0], color1, kBrightnessMax, groupA[1], color1, kBrightnessMax,
-            groupB[0], color2, kBrightnessMax, groupB[1], color2, kBrightnessMax);
+        set(groupA[0], color1, _brightnessMax, groupA[1], color1, _brightnessMax,
+            groupB[0], color2, _brightnessMax, groupB[1], color2, _brightnessMax);
         delay(halfPeriodMs);
 
-        set(groupA[0], color2, kBrightnessMax, groupA[1], color2, kBrightnessMax,
-            groupB[0], color1, kBrightnessMax, groupB[1], color1, kBrightnessMax);
+        set(groupA[0], color2, _brightnessMax, groupA[1], color2, _brightnessMax,
+            groupB[0], color1, _brightnessMax, groupB[1], color1, _brightnessMax);
         delay(halfPeriodMs);
     }
 }
@@ -389,10 +426,10 @@ void MultiRGBWLeds::spin(LampColor color1, LampColor color2, LampColor color3, L
             }
 
             crossFade(
-                LampPosition::BackLeft, current[0], kBrightnessMax, next[0], kBrightnessMax,
-                LampPosition::FrontLeft, current[1], kBrightnessMax, next[1], kBrightnessMax,
-                LampPosition::FrontRight, current[2], kBrightnessMax, next[2], kBrightnessMax,
-                LampPosition::BackRight, current[3], kBrightnessMax, next[3], kBrightnessMax,
+                LampPosition::BackLeft, current[0], _brightnessMax, next[0], _brightnessMax,
+                LampPosition::FrontLeft, current[1], _brightnessMax, next[1], _brightnessMax,
+                LampPosition::FrontRight, current[2], _brightnessMax, next[2], _brightnessMax,
+                LampPosition::BackRight, current[3], _brightnessMax, next[3], _brightnessMax,
                 stepMs);
 
             memcpy(current, next, sizeof(current));

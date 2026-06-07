@@ -50,10 +50,21 @@ enum class Direction : uint8_t
     Anticlockwise
 };
 
+// Color model, chosen in begin():
+//   Calibrated - hues empirically tuned so colors read true on real RGBW
+//                lamps; brightness is 0-10.
+//   Linear     - nominal RGB color values, scaled linearly; brightness is
+//                0-255 (the analogWrite()/NeoPixel convention).
+enum class ColorMode : uint8_t
+{
+    Calibrated,
+    Linear
+};
+
 // Controls up to four RGBW lamps wired to a PCA9685 16-channel PWM driver.
 //
-// Brightness is 0-255 throughout (0 = off, 255 = full), matching the Arduino
-// analogWrite()/NeoPixel convention.
+// The color model and brightness range are chosen in begin() via ColorMode
+// (default Calibrated -> brightness 0-10; Linear -> brightness 0-255).
 //
 // Each lamp is described by an array of four PCA9685 channel numbers (0-15) in
 // {R, G, B, W} order -- these are PCA9685 channels, NOT Arduino pins.
@@ -62,20 +73,23 @@ class MultiRGBWLeds
 public:
     static constexpr uint8_t kLampCount = 4;
     static constexpr uint8_t kChannelsPerLamp = 4;
-    static constexpr uint8_t kBrightnessMax = 255;
     static constexpr uint16_t kPwmMax = 4095; // PCA9685 is 12-bit
     static constexpr uint8_t kDefaultAddress = 0x40;
     static constexpr float kDefaultFrequencyHz = 1600.0f;
+    static constexpr uint8_t kCalibratedBrightnessMax = 10;
+    static constexpr uint8_t kLinearBrightnessMax = 255;
 
     MultiRGBWLeds() = default;
 
     // Initialize with an internally-owned PCA9685 at the given I2C address.
     // Calls Wire.begin() and configures the driver for you.
+    // `mode` selects the color model and brightness range (see ColorMode).
     void begin(
         const uint8_t backLeft[kChannelsPerLamp],
         const uint8_t frontLeft[kChannelsPerLamp],
         const uint8_t frontRight[kChannelsPerLamp],
         const uint8_t backRight[kChannelsPerLamp],
+        ColorMode mode = ColorMode::Calibrated,
         uint8_t i2cAddress = kDefaultAddress,
         float pwmFrequencyHz = kDefaultFrequencyHz);
 
@@ -87,7 +101,8 @@ public:
         const uint8_t frontLeft[kChannelsPerLamp],
         const uint8_t frontRight[kChannelsPerLamp],
         const uint8_t backRight[kChannelsPerLamp],
-        Adafruit_PWMServoDriver &externalDriver);
+        Adafruit_PWMServoDriver &externalDriver,
+        ColorMode mode = ColorMode::Calibrated);
 
     // Set 1-4 lamps to a solid color/brightness. Color `Off` clears that lamp.
     void set(
@@ -172,7 +187,8 @@ private:
     };
 
     // Relative R/G/B/W mix per LampColor (0-255), indexed by the enum. In flash.
-    static const Rgbw kColorTable[14];
+    static const Rgbw kColorTableCalibrated[14];
+    static const Rgbw kColorTableLinear[14];
 
     uint8_t _backLeft[kChannelsPerLamp] = {0};
     uint8_t _frontLeft[kChannelsPerLamp] = {0};
@@ -182,14 +198,18 @@ private:
     Adafruit_PWMServoDriver _ownedDriver;     // used when begin() owns the driver
     Adafruit_PWMServoDriver *_driver = nullptr; // points at owned or external
 
+    const Rgbw *_colorTable = kColorTableCalibrated; // active color table
+    uint8_t _brightnessMax = kCalibratedBrightnessMax; // full-brightness value for the active mode
+
     void storeChannels(
         const uint8_t backLeft[kChannelsPerLamp],
         const uint8_t frontLeft[kChannelsPerLamp],
         const uint8_t frontRight[kChannelsPerLamp],
         const uint8_t backRight[kChannelsPerLamp]);
+    void applyMode(ColorMode mode);
 
     const uint8_t *channelsFor(LampPosition position) const;
-    static Rgbw colorFor(LampColor color);
+    Rgbw colorFor(LampColor color) const;
     uint16_t channelPwm(uint8_t mix, uint8_t brightness) const;
 
     void applyOne(LampPosition position, LampColor color, uint8_t brightness);

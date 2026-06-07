@@ -11,14 +11,15 @@ MultiRGBWLeds leds;
 
 void setup()
 {
+    // Default mode is Calibrated -> brightness is 0-10 (full = 10).
+    // For nominal RGB on a 0-255 scale, use ColorMode::Linear (see CrossFade).
     leds.begin(backLeft, frontLeft, frontRight, backRight);
 
-    // Set each corner to a solid color at full brightness (0-255).
     leds.set(
-        LampPosition::BackLeft, LampColor::Red, 255,
-        LampPosition::FrontLeft, LampColor::Green, 255,
-        LampPosition::FrontRight, LampColor::Blue, 255,
-        LampPosition::BackRight, LampColor::White, 255);
+        LampPosition::BackLeft, LampColor::Red, 10,
+        LampPosition::FrontLeft, LampColor::Green, 10,
+        LampPosition::FrontRight, LampColor::Blue, 10,
+        LampPosition::BackRight, LampColor::White, 10);
 }
 
 void loop()

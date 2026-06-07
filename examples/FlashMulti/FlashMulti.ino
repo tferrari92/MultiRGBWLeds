@@ -11,6 +11,7 @@ MultiRGBWLeds leds;
 
 void setup()
 {
+    // Default Calibrated mode -> brightness is 0-10 (full = 10).
     leds.begin(backLeft, frontLeft, frontRight, backRight);
 }
 
@@ -18,12 +19,12 @@ void loop()
 {
     // Flash the two front lamps yellow, then the two back lamps yellow.
     leds.flash(
-        LampPosition::FrontLeft, LampColor::Yellow, 255,
-        LampPosition::FrontRight, LampColor::Yellow, 255,
+        LampPosition::FrontLeft, LampColor::Yellow, 10,
+        LampPosition::FrontRight, LampColor::Yellow, 10,
         150, 100);
 
     leds.flash(
-        LampPosition::BackLeft, LampColor::Yellow, 255,
-        LampPosition::BackRight, LampColor::Yellow, 255,
+        LampPosition::BackLeft, LampColor::Yellow, 10,
+        LampPosition::BackRight, LampColor::Yellow, 10,
         150, 100);
 }

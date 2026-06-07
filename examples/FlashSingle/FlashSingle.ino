@@ -11,11 +11,12 @@ MultiRGBWLeds leds;
 
 void setup()
 {
+    // Default Calibrated mode -> brightness is 0-10 (full = 10).
     leds.begin(backLeft, frontLeft, frontRight, backRight);
 }
 
 void loop()
 {
     // Blink the front-left lamp blue: 200ms on, 300ms off.
-    leds.flash(LampPosition::FrontLeft, LampColor::Blue, 255, 200, 300);
+    leds.flash(LampPosition::FrontLeft, LampColor::Blue, 10, 200, 300);
 }

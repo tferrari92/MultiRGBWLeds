@@ -11,6 +11,7 @@ MultiRGBWLeds leds;
 
 void setup()
 {
+    // Default Calibrated mode -> brightness is 0-10 (full = 10).
     leds.begin(backLeft, frontLeft, frontRight, backRight);
 }
 
@@ -18,10 +19,10 @@ void loop()
 {
     // Light all four corners white.
     leds.set(
-        LampPosition::BackLeft, LampColor::White, 255,
-        LampPosition::FrontLeft, LampColor::White, 255,
-        LampPosition::FrontRight, LampColor::White, 255,
-        LampPosition::BackRight, LampColor::White, 255);
+        LampPosition::BackLeft, LampColor::White, 10,
+        LampPosition::FrontLeft, LampColor::White, 10,
+        LampPosition::FrontRight, LampColor::White, 10,
+        LampPosition::BackRight, LampColor::White, 10);
     delay(1000);
 
     // Turn off just one corner.
