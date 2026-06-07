@@ -3,20 +3,24 @@
 // Relative R/G/B/W mix for each LampColor (0-255 per channel). Order MUST match
 // the LampColor enum. Stored in flash (PROGMEM) to save RAM. Brightness is
 // applied on top of these mixes at call time.
+//
+// These mixes are empirically calibrated so the colors read true on real RGBW
+// lamps (the channels' apparent intensities are not equal), not derived from
+// nominal RGB. At full brightness (255) they reproduce the tuned hues exactly.
 const MultiRGBWLeds::Rgbw MultiRGBWLeds::kColorTable[14] PROGMEM = {
     {0, 0, 0, 0},     // Off
     {255, 0, 0, 0},   // Red
-    {255, 51, 0, 0},  // Orange
-    {255, 128, 0, 0}, // Yellow
-    {204, 255, 0, 0}, // Lime
+    {204, 25, 0, 0},  // Orange
+    {153, 76, 0, 0},  // Yellow
+    {102, 127, 0, 0}, // Lime
     {0, 255, 0, 0},   // Green
-    {0, 255, 51, 0},  // Cyan
-    {0, 255, 102, 0}, // Aqua
-    {0, 179, 255, 0}, // Sky
+    {0, 204, 25, 0},  // Cyan
+    {0, 178, 51, 0},  // Aqua
+    {0, 102, 127, 0}, // Sky
     {0, 0, 255, 0},   // Blue
-    {102, 0, 255, 0}, // Indigo
-    {230, 0, 255, 0}, // Magenta
-    {255, 0, 51, 0},  // Pink
+    {51, 0, 178, 0},  // Indigo
+    {102, 0, 127, 0}, // Magenta
+    {204, 0, 25, 0},  // Pink
     {0, 0, 0, 255},   // White
 };
 
