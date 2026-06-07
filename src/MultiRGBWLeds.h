@@ -1,186 +1,205 @@
 #ifndef MultiRGBWLeds_h
 #define MultiRGBWLeds_h
 
-// Enum for lamp positions (unchanged)
-enum LampPosition
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+// Lamp positions, named for a four-corner layout.
+// `None` is a sentinel for the optional positions of the multi-lamp calls.
+enum class LampPosition : uint8_t
 {
-    BACK_LEFT,
-    FRONT_LEFT,
-    FRONT_RIGHT,
-    BACK_RIGHT,
-    NONE
+    BackLeft,
+    FrontLeft,
+    FrontRight,
+    BackRight,
+    None
 };
 
-// Enum for lamp colors (unchanged)
-enum LampColor
+// Predefined colors. Each maps to a relative R/G/B/W mix (see the color table
+// in the .cpp); brightness is applied on top at call time.
+enum class LampColor : uint8_t
 {
-    RED,
-    ORANGE,
-    YELLOW,
-    LIME,
-    GREEN,
-    CYAN,
-    AQUA,
-    SKY,
-    BLUE,
-    INDIGO,
-    MAGENTA,
-    PINK,
-    WHITE,
-    OFF
+    Off,
+    Red,
+    Orange,
+    Yellow,
+    Lime,
+    Green,
+    Cyan,
+    Aqua,
+    Sky,
+    Blue,
+    Indigo,
+    Magenta,
+    Pink,
+    White
 };
 
-// Enum for axis (added for sideToSide function)
-enum Axis
+// Axis for the sideToSide() animation.
+enum class Axis : uint8_t
 {
-    LEFT_RIGHT,
-    FRONT_BACK
+    LeftRight,
+    FrontBack
 };
 
-enum Direction
+// Rotation direction for the spin() animation.
+enum class Direction : uint8_t
 {
-    CLOCKWISE,
-    ANTICLOCKWISE
+    Clockwise,
+    Anticlockwise
 };
 
-// New struct to handle color-specific brightness
-struct ColorBrightness
-{
-    int red;
-    int green;
-    int blue;
-    int white;
-};
-
+// Controls up to four RGBW lamps wired to a PCA9685 16-channel PWM driver.
+//
+// Brightness is 0-255 throughout (0 = off, 255 = full), matching the Arduino
+// analogWrite()/NeoPixel convention.
+//
+// Each lamp is described by an array of four PCA9685 channel numbers (0-15) in
+// {R, G, B, W} order -- these are PCA9685 channels, NOT Arduino pins.
 class MultiRGBWLeds
 {
 public:
-    static void begin(
-        const int backLeft[4],
-        const int frontLeft[4],
-        const int frontRight[4],
-        const int backRight[4])
+    static constexpr uint8_t kLampCount = 4;
+    static constexpr uint8_t kChannelsPerLamp = 4;
+    static constexpr uint8_t kBrightnessMax = 255;
+    static constexpr uint16_t kPwmMax = 4095; // PCA9685 is 12-bit
+    static constexpr uint8_t kDefaultAddress = 0x40;
+    static constexpr float kDefaultFrequencyHz = 1600.0f;
+
+    MultiRGBWLeds() = default;
+
+    // Initialize with an internally-owned PCA9685 at the given I2C address.
+    // Calls Wire.begin() and configures the driver for you.
+    void begin(
+        const uint8_t backLeft[kChannelsPerLamp],
+        const uint8_t frontLeft[kChannelsPerLamp],
+        const uint8_t frontRight[kChannelsPerLamp],
+        const uint8_t backRight[kChannelsPerLamp],
+        uint8_t i2cAddress = kDefaultAddress,
+        float pwmFrequencyHz = kDefaultFrequencyHz);
+
+    // Initialize using a PCA9685 you own (e.g. to share the bus or drive
+    // several boards). You are responsible for calling driver.begin() and
+    // driver.setPWMFreq() yourself before using the lamps.
+    void begin(
+        const uint8_t backLeft[kChannelsPerLamp],
+        const uint8_t frontLeft[kChannelsPerLamp],
+        const uint8_t frontRight[kChannelsPerLamp],
+        const uint8_t backRight[kChannelsPerLamp],
+        Adafruit_PWMServoDriver &externalDriver);
+
+    // Set 1-4 lamps to a solid color/brightness. Color `Off` clears that lamp.
+    void set(
+        LampPosition pos1, LampColor color1, uint8_t brightness1,
+        LampPosition pos2 = LampPosition::None, LampColor color2 = LampColor::Off, uint8_t brightness2 = 0,
+        LampPosition pos3 = LampPosition::None, LampColor color3 = LampColor::Off, uint8_t brightness3 = 0,
+        LampPosition pos4 = LampPosition::None, LampColor color4 = LampColor::Off, uint8_t brightness4 = 0);
+
+    // Blink 1-4 lamps once: on for onMs, then off for offMs (blocking).
+    void flash(LampPosition pos1, LampColor color1, uint8_t brightness1,
+               uint16_t onMs, uint16_t offMs);
+    void flash(
+        LampPosition pos1, LampColor color1, uint8_t brightness1,
+        LampPosition pos2, LampColor color2, uint8_t brightness2,
+        uint16_t onMs, uint16_t offMs);
+    void flash(
+        LampPosition pos1, LampColor color1, uint8_t brightness1,
+        LampPosition pos2, LampColor color2, uint8_t brightness2,
+        LampPosition pos3, LampColor color3, uint8_t brightness3,
+        uint16_t onMs, uint16_t offMs);
+    void flash(
+        LampPosition pos1, LampColor color1, uint8_t brightness1,
+        LampPosition pos2, LampColor color2, uint8_t brightness2,
+        LampPosition pos3, LampColor color3, uint8_t brightness3,
+        LampPosition pos4, LampColor color4, uint8_t brightness4,
+        uint16_t onMs, uint16_t offMs);
+
+    // Smoothly fade 1-4 lamps from a start color/brightness to an end
+    // color/brightness over durationMs (blocking, sine-eased). All lamps fade
+    // together.
+    void crossFade(
+        LampPosition pos1, LampColor startColor1, uint8_t startBrightness1,
+        LampColor endColor1, uint8_t endBrightness1,
+        uint16_t durationMs);
+    void crossFade(
+        LampPosition pos1, LampColor startColor1, uint8_t startBrightness1, LampColor endColor1, uint8_t endBrightness1,
+        LampPosition pos2, LampColor startColor2, uint8_t startBrightness2, LampColor endColor2, uint8_t endBrightness2,
+        uint16_t durationMs);
+    void crossFade(
+        LampPosition pos1, LampColor startColor1, uint8_t startBrightness1, LampColor endColor1, uint8_t endBrightness1,
+        LampPosition pos2, LampColor startColor2, uint8_t startBrightness2, LampColor endColor2, uint8_t endBrightness2,
+        LampPosition pos3, LampColor startColor3, uint8_t startBrightness3, LampColor endColor3, uint8_t endBrightness3,
+        uint16_t durationMs);
+    void crossFade(
+        LampPosition pos1, LampColor startColor1, uint8_t startBrightness1, LampColor endColor1, uint8_t endBrightness1,
+        LampPosition pos2, LampColor startColor2, uint8_t startBrightness2, LampColor endColor2, uint8_t endBrightness2,
+        LampPosition pos3, LampColor startColor3, uint8_t startBrightness3, LampColor endColor3, uint8_t endBrightness3,
+        LampPosition pos4, LampColor startColor4, uint8_t startBrightness4, LampColor endColor4, uint8_t endBrightness4,
+        uint16_t durationMs);
+
+    // Swap two colors back and forth across an axis, `cycles` times.
+    // Each half-swap is held for halfPeriodMs (blocking).
+    void sideToSide(Axis axis, LampColor color1, LampColor color2,
+                    uint16_t halfPeriodMs, uint16_t cycles);
+
+    // Rotate a 4-color wheel around the lamps, `rotations` times.
+    // Each step crossfades over stepMs (blocking). Convenience overloads pad
+    // the unused slots with Off.
+    void spin(LampColor color1, LampColor color2, LampColor color3, LampColor color4,
+              Direction direction, uint16_t stepMs, uint16_t rotations = 1);
+    void spin(LampColor color1, Direction direction, uint16_t stepMs, uint16_t rotations = 1)
     {
-        initializeChannels(backLeft, frontLeft, frontRight, backRight);
+        spin(color1, LampColor::Off, LampColor::Off, LampColor::Off, direction, stepMs, rotations);
+    }
+    void spin(LampColor color1, LampColor color2, Direction direction, uint16_t stepMs, uint16_t rotations = 1)
+    {
+        spin(color1, LampColor::Off, color2, LampColor::Off, direction, stepMs, rotations);
+    }
+    void spin(LampColor color1, LampColor color2, LampColor color3, Direction direction, uint16_t stepMs, uint16_t rotations = 1)
+    {
+        spin(color1, color2, color3, LampColor::Off, direction, stepMs, rotations);
     }
 
-    // Public static methods remain the same
-    static void set(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2 = NONE, LampColor color2 = OFF, int brightness2 = 0,
-        LampPosition pos3 = NONE, LampColor color3 = OFF, int brightness3 = 0,
-        LampPosition pos4 = NONE, LampColor color4 = OFF, int brightness4 = 0);
-
-    // Single position flash with equal on/off times
-    static void flash(LampPosition pos1, LampColor color1, int brightness1, int intervalMs);
-
-    // Two positions flash with equal on/off times
-    static void flash(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2, LampColor color2, int brightness2,
-        int intervalMs);
-
-    // Three positions flash with equal on/off times
-    static void flash(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2, LampColor color2, int brightness2,
-        LampPosition pos3, LampColor color3, int brightness3,
-        int intervalMs);
-
-    // Four positions flash with equal on/off times
-    static void flash(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2, LampColor color2, int brightness2,
-        LampPosition pos3, LampColor color3, int brightness3,
-        LampPosition pos4, LampColor color4, int brightness4,
-        int intervalMs);
-
-    // Single position flash with specified on duration
-    static void flash(LampPosition pos1, LampColor color1, int brightness1, int durationMs, int intervalMs);
-
-    // Two positions flash with specified on duration
-    static void flash(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2, LampColor color2, int brightness2,
-        int durationMs, int intervalMs);
-
-    // Three positions flash with specified on duration
-    static void flash(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2, LampColor color2, int brightness2,
-        LampPosition pos3, LampColor color3, int brightness3,
-        int durationMs, int intervalMs);
-
-    // Four positions flash with specified on duration
-    static void flash(
-        LampPosition pos1, LampColor color1, int brightness1,
-        LampPosition pos2, LampColor color2, int brightness2,
-        LampPosition pos3, LampColor color3, int brightness3,
-        LampPosition pos4, LampColor color4, int brightness4,
-        int durationMs, int intervalMs);
-
-    // Existing crossFade methods remain the same...
-    static void crossFade(
-        LampPosition pos1, LampColor startColor1, int startBrightness1,
-        LampColor endColor1, int endBrightness1,
-        int durationMs);
-
-    static void crossFade(
-        LampPosition pos1, LampColor startColor1, int startBrightness1, LampColor endColor1, int endBrightness1,
-        LampPosition pos2, LampColor startColor2, int startBrightness2, LampColor endColor2, int endBrightness2,
-        int durationMs);
-
-    static void crossFade(
-        LampPosition pos1, LampColor startColor1, int startBrightness1, LampColor endColor1, int endBrightness1,
-        LampPosition pos2, LampColor startColor2, int startBrightness2, LampColor endColor2, int endBrightness2,
-        LampPosition pos3, LampColor startColor3, int startBrightness3, LampColor endColor3, int endBrightness3,
-        int durationMs);
-
-    static void crossFade(
-        LampPosition pos1, LampColor startColor1, int startBrightness1, LampColor endColor1, int endBrightness1,
-        LampPosition pos2, LampColor startColor2, int startBrightness2, LampColor endColor2, int endBrightness2,
-        LampPosition pos3, LampColor startColor3, int startBrightness3, LampColor endColor3, int endBrightness3,
-        LampPosition pos4, LampColor startColor4, int startBrightness4, LampColor endColor4, int endBrightness4,
-        int durationMs = 1000);
-
-    // New sideToSide function
-    static void sideToSide(Axis axis, LampColor color1, LampColor color2, unsigned int time, unsigned int count);
-
-    static void spin(LampColor color1, LampColor color2, LampColor color3, LampColor color4, Direction direction, int speed, int count = 1);
-    static void spin(LampColor color1, Direction direction, int speed, int count = 1)
-    {
-        spin(color1, LampColor::OFF, LampColor::OFF, LampColor::OFF, direction, speed, count);
-    }
-    static void spin(LampColor color1, LampColor color2, Direction direction,
-                     int speed, int count = 1)
-    {
-        spin(color1, LampColor::OFF, color2, LampColor::OFF, direction, speed, count);
-    }
-    static void spin(LampColor color1, LampColor color2, LampColor color3,
-                     Direction direction, int speed, int count = 1)
-    {
-        spin(color1, color2, color3, LampColor::OFF, direction, speed, count);
-    }
-
-    static void resetPosition(LampPosition position);
-    static void resetAllPositions();
+    // Turn a single lamp / all lamps off.
+    void resetPosition(LampPosition position);
+    void resetAllPositions();
 
 private:
-    // Channel configurations
-    static int backLeftChannels[4];
-    static int frontLeftChannels[4];
-    static int frontRightChannels[4];
-    static int backRightChannels[4];
+    struct Rgbw
+    {
+        uint8_t r, g, b, w;
+    };
 
-    static void initializeChannels(
-        const int backLeft[4],
-        const int frontLeft[4],
-        const int frontRight[4],
-        const int backRight[4]);
+    // Relative R/G/B/W mix per LampColor (0-255), indexed by the enum. In flash.
+    static const Rgbw kColorTable[14];
 
-    static void getColorValues(LampColor color, int *redChannel, int *greenChannel, int *blueChannel, int *whiteChannel);
-    static ColorBrightness getColorBrightness(LampColor color, int globalBrightness);
-    static int *getChannels(LampPosition position, LampColor color);
+    uint8_t _backLeft[kChannelsPerLamp] = {0};
+    uint8_t _frontLeft[kChannelsPerLamp] = {0};
+    uint8_t _frontRight[kChannelsPerLamp] = {0};
+    uint8_t _backRight[kChannelsPerLamp] = {0};
+
+    Adafruit_PWMServoDriver _ownedDriver;     // used when begin() owns the driver
+    Adafruit_PWMServoDriver *_driver = nullptr; // points at owned or external
+
+    void storeChannels(
+        const uint8_t backLeft[kChannelsPerLamp],
+        const uint8_t frontLeft[kChannelsPerLamp],
+        const uint8_t frontRight[kChannelsPerLamp],
+        const uint8_t backRight[kChannelsPerLamp]);
+
+    const uint8_t *channelsFor(LampPosition position) const;
+    static Rgbw colorFor(LampColor color);
+    uint16_t channelPwm(uint8_t mix, uint8_t brightness) const;
+
+    void applyOne(LampPosition position, LampColor color, uint8_t brightness);
+    void writeLamp(LampPosition position, LampColor color, uint8_t brightness);
+
+    void crossFadeCore(
+        const LampPosition positions[kLampCount],
+        const LampColor startColors[kLampCount], const uint8_t startBrightness[kLampCount],
+        const LampColor endColors[kLampCount], const uint8_t endBrightness[kLampCount],
+        uint8_t count, uint16_t durationMs);
 };
 
 #endif // MultiRGBWLeds_h
